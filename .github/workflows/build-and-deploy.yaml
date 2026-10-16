@@ -1,0 +1,25 @@
+name: Build and Deploy
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: イメージをビルドしてプッシュ
+        run: |
+          docker build -t myapp:${{ github.sha }} .
+          docker push myapp:${{ github.sha }}
+
+      - name: マニフェストのイメージタグを更新してプッシュ
+        run: |
+          sed -i "s|image: myapp:.*|image: myapp:${{ github.sha }}|" manifests/deployment.yaml
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git add manifests/deployment.yaml
+          git commit -m "Update image to ${{ github.sha }}"
+          git push
+          # この後、ArgoCDが変更を検知してデプロイする
